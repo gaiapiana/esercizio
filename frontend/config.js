@@ -24,4 +24,4 @@
 // E' per questo che sta in un file da solo, e non sparso dentro app.js.
 // ============================================================================
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL =  "https://crispy-engine-5vvx4vp5jxgqfvj5v-8000.app.github.dev";

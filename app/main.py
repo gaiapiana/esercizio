@@ -30,7 +30,9 @@ from app.models import TicketIn, TicketOut, TicketStatus
 load_dotenv()
 
 # La chiave che protegge le scritture.
-API_KEY = "chiave-del-corso-2026"
+API_KEY = os.getenv("API_KEY")
+if not API_KEY:
+    raise RuntimeError("Manca API_KEY: copia .env.example in .env e imposta una chiave.")
 
 app = FastAPI(title="Portale Ticket", version="1.0")
 
@@ -69,7 +71,7 @@ def health():
 
 
 @app.get("/tickets")
-def list_tickets(status: Optional[str] = Query(default=None)):
+def list_tickets(status: Optional[TicketStatus] = Query(default=None)):
     """La lista dei ticket, eventualmente filtrata per stato."""
     return db.list_tickets(status)
 
@@ -91,25 +93,30 @@ def get_ticket(ticket_id: int):
 
 
 @app.post("/tickets", status_code=201, dependencies=[Depends(require_api_key)])
-async def create_ticket(request: Request):
+def create_ticket(ticket: TicketIn):
     """Crea un nuovo ticket.
 
-    Prende il JSON che arriva e lo salva.
+    "ticket: TicketIn" dice a FastAPI come deve essere fatto un ticket valido:
+    titolo da 3 a 100 caratteri, stato solo tra quelli ammessi. Se i dati
+    non rispettano queste regole, FastAPI risponde 422 da solo, prima ancora
+    che la funzione venga eseguita.
     """
-    dati = await request.json()
-    return db.create_ticket(
-        dati.get("title", ""),
-        dati.get("description", ""),
-        dati.get("status", "aperto"),
-    )
+    return db.create_ticket(ticket.title, ticket.description, ticket.status)
 
 
-# TODO — Manca PUT /tickets/{ticket_id}.
-# Il menu "stato" del frontend lo chiama e si prende un 405: il metodo non
-# esiste. Scriverlo e' il vostro lavoro: db.update_ticket() c'e' gia'.
+@app.put("/tickets/{ticket_id}", response_model=TicketOut, dependencies=[Depends(require_api_key)])
+def update_ticket(ticket_id: int, ticket: TicketIn):
+    """Modifica un ticket esistente.
 
+    Stessa protezione di POST (serve la chiave) e stesso modello TicketIn
+    in ingresso, cosi' i dati vengono validati allo stesso modo.
+    """
+    aggiornato = db.update_ticket(ticket_id, ticket.title, ticket.description, ticket.status)
+    if aggiornato is None:
+        raise HTTPException(status_code=404, detail="Ticket non trovato")
+    return aggiornato
 
-@app.delete("/tickets/{ticket_id}", status_code=204)
+@app.delete("/tickets/{ticket_id}", status_code=204, dependencies=[Depends(require_api_key)])
 def delete_ticket(ticket_id: int):
     """Cancella un ticket. 204 vuol dire "fatto, e non ho niente da dirti"."""
     if not db.delete_ticket(ticket_id):

@@ -155,12 +155,21 @@ function costruisciRiga(ticket) {
   riga.appendChild(cellaId);
 
   // --- titolo e descrizione ---
-  // Costruiamo le due righe di testo in un colpo solo: e' piu' corto che
-  // creare due <div> a mano.
+  // Creiamo due <div> a mano e ci mettiamo il testo con textContent,
+  // cosi' un titolo che contiene HTML (es. <img onerror=...>) resta
+  // testo semplice e non viene mai eseguito dal browser.
   const cellaTesto = document.createElement("td");
-  cellaTesto.innerHTML =
-    '<div class="cella-titolo">' + ticket.title + '</div>' +
-    '<div class="cella-descrizione">' + ticket.description + '</div>';
+
+  const divTitolo = document.createElement("div");
+  divTitolo.className = "cella-titolo";
+  divTitolo.textContent = ticket.title;
+
+  const divDescrizione = document.createElement("div");
+  divDescrizione.className = "cella-descrizione";
+  divDescrizione.textContent = ticket.description;
+
+  cellaTesto.appendChild(divTitolo);
+  cellaTesto.appendChild(divDescrizione);
   riga.appendChild(cellaTesto);
 
   // --- stato ---
